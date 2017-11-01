@@ -1,0 +1,10 @@
+.DS_Store
+*.pyc
+.idea
+.coverage
+*.pyc
+MANIFEST
+.cache/
+docs/build
+dist/
+virtualenv/
