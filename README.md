@@ -13,6 +13,7 @@ pip install git+https://github.com/kinfoundation/kin-sdk-python.git
 
 ## Usage
 
+### Initialization
 ```python
 import kin
 
@@ -30,10 +31,16 @@ kin_sdk = kin.TokenSDK(private_key='a60baaa34ed125af0570a3df7d4cd3e80dd5dc507068
 # Init SDK with custom parameters
 kin_sdk = kin.TokenSDK(provider_endpoint_uri='json-rpc endpoint uri', private_key='my private key',
                        contract_address='my contract address', contract_abi='abi of my contract as json')
-             
+````
+
+### Get Wallet Details
+```python
 # Get my public address
 address = kin_sdk.get_address()
+```
 
+### Getting Balance
+```python
 # Get Ether balance of my account
 eth_balance = kin_sdk.get_ether_balance()
 
@@ -45,14 +52,19 @@ eth_balance = kin_sdk.get_address_ether_balance('address')
 
 # Get KIN balance of some address
 kin_balance = kin_sdk.get_address_token_balance('address')
+```
 
+### Sending Coin
+```python
 # Send Ether from my account to some address
 tx_id = kin_sdk.send_ether('address', 10)
 
 # Send KIN from my account to some address
 tx_id = kin_sdk.send_tokens('address', 10)
+```
 
-# Get transaction status:
+### Transaction Monitoring
+```python
 tx_status = kin_sdk.get_transaction_status(tx_id)
 # returns one of:
 #   kin.TransactionStatus.UNKNOWN
@@ -64,30 +76,14 @@ tx_status = kin_sdk.get_transaction_status(tx_id)
 def mycallback(tx_id, status, from, to, amount):
   ....
   
-# Monitor Ether transactions from/to my address
-kin_sdk.monitor_ether_transactions(mycallback)
-
-# Monitor Ether transactions from me 
-kin_sdk.monitor_ether_transactions(mycallback, to_address='all')
-
-# Monitor Ether transactions to me 
-kin_sdk.monitor_ether_transactions(mycallback, from_address='all')
-
-# Monitor Ether transactions from some address to some address
-kin_sdk.monitor_ether_transactions(mycallback, from_address='from address', to_address='to address')
-
-# Monitor KIN transactions from/to my address
-kin_sdk.monitor_token_transactions(mycallback)
-
-# Monitor KIN transactions from me
-kin_sdk.monitor_token_transactions(mycallback, to_address='all')
-
-# Monitor KIN transactions to me
-kin_sdk.monitor_token_transactions(mycallback, from_address='all')
-
 # Monitor KIN transactions from some address to some address
 kin_sdk.monitor_token_transactions(mycallback, from_address='from address', to_address='to address')
 
+# Monitor Ether transactions from me 
+kin_sdk.monitor_ether_transactions(mycallback, from_address=kin_sdk.get_address())
+
+# Monitor Ether transactions to me 
+kin_sdk.monitor_ether_transactions(mycallback, to_address=kin_sdk.get_address())
 ```
 
 ## Support & Discussion
