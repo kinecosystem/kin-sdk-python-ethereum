@@ -3,6 +3,7 @@ from decimal import Decimal
 import json
 import kin
 import pytest
+from time import sleep
 
 TEST_ADDRESS = '0x4c6527c2BEB032D46cfe0648072cAb641cA0aA80'
 TEST_PRIVATE_KEY = 'd60baaa34ed125af0570a3df7d4ad3e80dd5dc5070680573f8de0ecfc1977275'
@@ -29,6 +30,8 @@ def test_create_fail_empty_contract_address():
 def test_create_fail_invalid_contract_address():
     with pytest.raises(kin.SdkConfigurationError):
         kin.TokenSDK(contract_address='0xBAD')
+    with pytest.raises(kin.SdkConfigurationError):
+        kin.TokenSDK(contract_address='0x4c6527c2BEB032D46cfe0648072cAb641cA0aA81')  # invalid checksum
 
 
 def test_create_fail_empty_abi():
@@ -96,20 +99,20 @@ def test_get_address_ether_balance(test_sdk):
 
 def test_get_token_balance(test_sdk):
     balance = test_sdk.get_token_balance()
-    assert balance == 1000000
+    assert balance > 100000
 
 
 def test_get_address_token_balance(test_sdk):
     with pytest.raises(ValueError):
         test_sdk.get_address_token_balance('0xBAD')
     balance = test_sdk.get_address_token_balance(TEST_ADDRESS)
-    assert balance == 1000000
+    assert balance > 100000
 
 
 def test_send_ether(test_sdk):
     with pytest.raises(ValueError):
         test_sdk.send_ether(TEST_ADDRESS, 0)  # amount must be positive
-    with pytest.raises(ValueError):  # not enough ether
+    with pytest.raises(ValueError):  # not enough ether)
         test_sdk.send_ether(TEST_ADDRESS, 100)
     tx_id = test_sdk.send_ether(TEST_ADDRESS, 0.001)
     assert tx_id
@@ -143,8 +146,40 @@ def test_get_transaction_status(test_sdk):
     assert tx_status == kin.TransactionStatus.FAIL
 
 
-def test_monitor_transaction_status():
-    pass
+def test_monitor_ether_transactions(test_sdk):
+    def my_callback(tx_id, status, from_address, to_address, amount):
+        pass
+
+    with pytest.raises(ValueError):
+        test_sdk.monitor_ether_transactions(my_callback)
+
+
+def test_monitor_token_transactions(test_sdk):
+    tx_statuses = {}
+
+    def my_callback(tx_id, status, from_address, to_address, amount):
+        assert from_address == TEST_ADDRESS
+        assert to_address == TEST_ADDRESS
+        assert amount == 10
+        tx_statuses[tx_id] = status
+
+    with pytest.raises(ValueError):
+        test_sdk.monitor_token_transactions(my_callback)
+
+    # TODO: test larger than account balance transfer
+    # tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10000000)
+
+    test_sdk.monitor_token_transactions(my_callback, from_address=TEST_ADDRESS)
+    tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10)
+    sleep(1)
+    assert tx_statuses.get(tx_id)
+    assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
+
+    waited = 0
+    while tx_statuses[tx_id] != kin.TransactionStatus.SUCCESS and waited <= 60:
+        sleep(10)
+        waited += 10
+    assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 
 
 '''

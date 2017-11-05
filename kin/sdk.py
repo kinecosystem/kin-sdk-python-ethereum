@@ -71,11 +71,6 @@ class TokenSDK(object):
             self.private_key = private_key
             self.address = self.web3.eth.defaultAccount = pk.public_key.to_checksum_address()
 
-        # filter tracking
-        self._filter_counter = itertools.count()
-        self._log_filters = {}
-        self._pending_transaction_filters = {}
-
     def get_address(self):
         if not self.address:
             raise SdkNotConfiguredError('address not configured')
@@ -139,6 +134,7 @@ class TokenSDK(object):
             return TransactionStatus.FAIL
         # pre-Byzantium, no status field
         # failed transaction usually consumes all the gas
+        # TODO: see if the number of block confirmations needs to be taken into account
         if tx_receipt.get('gasUsed') < tx.get('gas'):
             return TransactionStatus.SUCCESS
         # WARNING: there can be cases when gasUsed == gas for successful transactions!
@@ -146,49 +142,64 @@ class TokenSDK(object):
         return TransactionStatus.FAIL
 
     def monitor_ether_transactions(self, callback, from_address=None, to_address=None):
-        if from_address and to_address:
-            validate_address(from_address)
-            validate_address(to_address)
-        else:
-            if not self.address:
-                raise SdkNotConfiguredError('address not configured')
-            if from_address:
-                validate_address(from_address)
-                to_address = self.address
-            if to_address:
-                validate_address(to_address)
-                from_address = self.address
+        filter_args = self._get_filter_args(from_address, to_address)
+        raise NotImplementedError('monitoring of ether transactions is not yet implemented')
 
-        # TODO
-        # callback(tx_id, status, from, to, amount)
+    def monitor_token_transactions(self, callback_fn, from_address=None, to_address=None):
+        filter_params = {
+            'filter': self._get_filter_args(from_address, to_address),
+            'toBlock': 'pending',
+        }
+        transfer_filter = self.token_contract.on('Transfer', filter_params)
 
-    def monitor_token_transactions(self, from_address=None, to_address=None):
-        if from_address and to_address:
-            validate_address(from_address)
-            validate_address(to_address)
-        else:
-            if not self.address:
-                raise SdkNotConfiguredError('address not configured')
-            if from_address:
-                validate_address(from_address)
-                to_address = self.address
-            if to_address:
-                validate_address(to_address)
-                from_address = self.address
+        def callback_adapter_fn(entry):
+            if entry['blockHash'] == '0x0000000000000000000000000000000000000000000000000000000000000000':
+                tx_status = TransactionStatus.PENDING
+            else:
+                tx_status = TransactionStatus.SUCCESS  # TODO: how to determine FAIL
+            tx_id = entry.get('transactionHash')
+            tx_from = entry['args'].get('from')
+            tx_to = entry['args'].get('to')
+            amount = self.web3.fromWei(entry['args'].get('value'), 'ether')
+            callback_fn(tx_id, tx_status, tx_from, tx_to, amount)
 
-        # TODO
-        # callback(tx_id, status, from, to, amount)
+            # stop watching when the transaction is successful or failed.
+            # NOTE: transfer_filter.stop_watching() causes thread exception because of 'current thread join'
+            # So we are doing what is needed explicitly here.
+            if tx_status > TransactionStatus.PENDING:
+                transfer_filter.running = False
+                transfer_filter.stopped = True
+                self.web3.eth.uninstallFilter(transfer_filter.filter_id)
+
+        transfer_filter.watch(callback_adapter_fn)
 
     # helpers
 
+    @staticmethod
+    def _get_filter_args(from_address, to_address):
+        if not from_address and not to_address:
+            raise ValueError('either from_address or to_address or both must be provided')
+        filter_args = {}
+        if from_address:
+            validate_address(from_address)
+            filter_args['from'] = from_address
+        if to_address:
+            validate_address(to_address)
+            filter_args['to'] = to_address
+        return filter_args
+
     def _build_raw_transaction(self, address, amount, data=b''):
         nonce = self.web3.eth.getTransactionCount(self.address, 'pending')
+        # TODO: replace pyethereum code with the newer code in web3.py (v4) and remove pyethereum from requirements.
         tx = Transaction(
             nonce=nonce,
-            gasprice=DEFAULT_GAS_PRICE,   # TODO: or self.web3.eth.gasPrice?
-            startgas=DEFAULT_GAS_PER_TX,  # TODO: or calculate gas estimate?
+            gasprice=DEFAULT_GAS_PRICE,   # TODO: optimal gas price
+            startgas=DEFAULT_GAS_PER_TX,  # TODO: optimal gas limit
             to=address,
             value=self.web3.toWei(amount, 'ether'),
             data=data,
         ).sign(self.private_key)
         return self.web3.toHex(rlp.encode(tx))
+
+
+
