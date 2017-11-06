@@ -65,6 +65,7 @@ tx_id = kin_sdk.send_tokens('address', 10)
 
 ### Transaction Monitoring
 ```python
+# Get transaction status
 tx_status = kin_sdk.get_transaction_status(tx_id)
 # returns one of:
 #   kin.TransactionStatus.UNKNOWN
@@ -72,18 +73,27 @@ tx_status = kin_sdk.get_transaction_status(tx_id)
 #   kin.TransactionStatus.SUCCESS
 #   kin.TransactionStatus.FAIL
 
-# Transaction monitoring callback
-def mycallback(tx_id, status, from, to, amount):
-  ....
+# Setup monitoring callback
+tx_statuses = {}
+def mycallback(tx_id, status, from_address, to_address, amount):
+    tx_statuses[tx_id] = status
   
-# Monitor KIN transactions from some address to some address
-kin_sdk.monitor_token_transactions(mycallback, from_address='from address', to_address='to address')
+# Monitor KIN transactions from me 
+kin_sdk.monitor_token_transactions(mycallback, from_address=kin_sdk.get_address())
 
-# Monitor Ether transactions from me 
-kin_sdk.monitor_ether_transactions(mycallback, from_address=kin_sdk.get_address())
+# Send tokens
+tx_id = kin_sdk.send_tokens('to address', 10)
 
-# Monitor Ether transactions to me 
-kin_sdk.monitor_ether_transactions(mycallback, to_address=kin_sdk.get_address())
+# In a second or two, the transaction enters the pending queue
+sleep(2)
+assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
+
+# Wait until the transaction is confirmed 
+waited = 0
+while tx_statuses[tx_id] == kin.TransactionStatus.PENDING and waited <= 60:
+    sleep(10)
+    waited += 10
+assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 ```
 
 ## Support & Discussion

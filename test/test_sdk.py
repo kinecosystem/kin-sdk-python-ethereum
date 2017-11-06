@@ -112,7 +112,7 @@ def test_get_address_token_balance(test_sdk):
 def test_send_ether(test_sdk):
     with pytest.raises(ValueError):
         test_sdk.send_ether(TEST_ADDRESS, 0)  # amount must be positive
-    with pytest.raises(ValueError):  # not enough ether)
+    with pytest.raises(ValueError):  # not enough ether
         test_sdk.send_ether(TEST_ADDRESS, 100)
     tx_id = test_sdk.send_ether(TEST_ADDRESS, 0.001)
     assert tx_id
@@ -147,11 +147,28 @@ def test_get_transaction_status(test_sdk):
 
 
 def test_monitor_ether_transactions(test_sdk):
+    tx_statuses = {}
+
     def my_callback(tx_id, status, from_address, to_address, amount):
-        pass
+        assert from_address == TEST_ADDRESS.lower()
+        assert to_address == TEST_ADDRESS.lower()
+        assert amount == Decimal('0.001')
+        tx_statuses[tx_id] = status
 
     with pytest.raises(ValueError):
         test_sdk.monitor_ether_transactions(my_callback)
+
+    test_sdk.monitor_ether_transactions(my_callback, from_address=TEST_ADDRESS)
+    tx_id = test_sdk.send_ether(TEST_ADDRESS, 0.001)
+    sleep(2)
+    assert tx_statuses.get(tx_id)
+    assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
+
+    waited = 0
+    while tx_statuses[tx_id] == kin.TransactionStatus.PENDING and waited <= 60:
+        sleep(10)
+        waited += 10
+    assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 
 
 def test_monitor_token_transactions(test_sdk):
@@ -171,21 +188,13 @@ def test_monitor_token_transactions(test_sdk):
 
     test_sdk.monitor_token_transactions(my_callback, from_address=TEST_ADDRESS)
     tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10)
-    sleep(1)
+    sleep(2)
     assert tx_statuses.get(tx_id)
     assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
 
     waited = 0
-    while tx_statuses[tx_id] != kin.TransactionStatus.SUCCESS and waited <= 60:
+    while tx_statuses[tx_id] == kin.TransactionStatus.PENDING and waited <= 60:
         sleep(10)
         waited += 10
     assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 
-
-'''
-def test_get_transaction(test_sdk):
-    tx = test_sdk.get_transaction('0x4c29ae8d617128322750d8cfd6788754f0a18799987531df903675182db5686a')
-    assert tx
-    assert tx['from'] == TEST_ADDRESS.lower()
-    assert test_sdk.web3.fromWei(tx['value'], 'ether') == Decimal('0.001')
-'''
