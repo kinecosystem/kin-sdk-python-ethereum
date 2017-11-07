@@ -13,48 +13,49 @@ TEST_PROVIDER_ENDPOINT = 'http://159.89.9.81:8545' # 'https://ropsten.infura.io/
 
 
 def test_create_fail_empty_endpoint():
-    with pytest.raises(kin.SdkConfigurationError):
+    with pytest.raises(kin.SdkConfigurationError, message='either provider or provider endpoint must be provided'):
         kin.TokenSDK(provider_endpoint_uri='')
 
 
 def test_create_fail_bad_endpoint():
-    with pytest.raises(kin.SdkConfigurationError):
+    with pytest.raises(kin.SdkConfigurationError, message='cannot connect to provider endpoint'):
         kin.TokenSDK(provider_endpoint_uri='bad')
 
 
 def test_create_fail_empty_contract_address():
-    with pytest.raises(kin.SdkConfigurationError):
+    with pytest.raises(kin.SdkConfigurationError, message='token contract address not provided'):
         kin.TokenSDK(contract_address='')
 
 
 def test_create_fail_invalid_contract_address():
-    with pytest.raises(kin.SdkConfigurationError):
+    with pytest.raises(kin.SdkConfigurationError, message='invalid token contract address'):
         kin.TokenSDK(contract_address='0xBAD')
-    with pytest.raises(kin.SdkConfigurationError):
+    with pytest.raises(kin.SdkConfigurationError, message='invalid token contract address'):
         kin.TokenSDK(contract_address='0x4c6527c2BEB032D46cfe0648072cAb641cA0aA81')  # invalid checksum
 
 
 def test_create_fail_empty_abi():
-    with pytest.raises(kin.SdkConfigurationError):
+    with pytest.raises(kin.SdkConfigurationError, message='token contract abi not provided'):
         kin.TokenSDK(contract_abi='')
 
 
 def test_create_fail_bad_private_key():
-    with pytest.raises(kin.SdkConfigurationError):
+    with pytest.raises(kin.SdkConfigurationError, message='cannot load private key: Unexpected private key format.  '
+                                                          'Must be length 32 byte string'):
         kin.TokenSDK(private_key='bad')
 
 
 def test_sdk_not_configured():
     sdk = kin.TokenSDK()
-    with pytest.raises(kin.SdkNotConfiguredError):
+    with pytest.raises(kin.SdkNotConfiguredError, message='address not configured'):
         sdk.get_address()
-    with pytest.raises(kin.SdkNotConfiguredError):
+    with pytest.raises(kin.SdkNotConfiguredError, message='address not configured'):
         sdk.get_ether_balance()
-    with pytest.raises(kin.SdkNotConfiguredError):
+    with pytest.raises(kin.SdkNotConfiguredError, message='address not configured'):
         sdk.get_token_balance()
-    with pytest.raises(kin.SdkNotConfiguredError):
+    with pytest.raises(kin.SdkNotConfiguredError, message='address not configured'):
         sdk.send_ether('address', 100)
-    with pytest.raises(kin.SdkNotConfiguredError):
+    with pytest.raises(kin.SdkNotConfiguredError, message='address not configured'):
         sdk.send_tokens('address', 100)
 
 
@@ -87,14 +88,14 @@ def test_get_address(test_sdk):
 
 def test_get_ether_balance(test_sdk):
     balance = test_sdk.get_ether_balance()
-    assert balance > 2
+    assert balance > 0
 
 
 def test_get_address_ether_balance(test_sdk):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, message="'0xBAD' is not an address"):
         test_sdk.get_address_ether_balance('0xBAD')
     balance = test_sdk.get_address_ether_balance(TEST_ADDRESS)
-    assert balance > 2
+    assert balance > 0
 
 
 def test_get_token_balance(test_sdk):
@@ -103,17 +104,18 @@ def test_get_token_balance(test_sdk):
 
 
 def test_get_address_token_balance(test_sdk):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, message="'0xBAD' is not an address"):
         test_sdk.get_address_token_balance('0xBAD')
     balance = test_sdk.get_address_token_balance(TEST_ADDRESS)
     assert balance > 100000
 
 
 def test_send_ether(test_sdk):
-    with pytest.raises(ValueError):
-        test_sdk.send_ether(TEST_ADDRESS, 0)  # amount must be positive
-    with pytest.raises(ValueError):  # not enough ether
+    with pytest.raises(ValueError, message='amount must be positive'):
+        test_sdk.send_ether(TEST_ADDRESS, 0)
+    with pytest.raises(ValueError, message='insufficient funds for gas * price + value'):
         test_sdk.send_ether(TEST_ADDRESS, 100)
+
     tx_id = test_sdk.send_ether(TEST_ADDRESS, 0.001)
     assert tx_id
     tx_status = test_sdk.get_transaction_status(tx_id)
@@ -121,8 +123,12 @@ def test_send_ether(test_sdk):
 
 
 def test_send_tokens(test_sdk):
-    with pytest.raises(ValueError):
-        test_sdk.send_tokens(TEST_ADDRESS, 0)  # amount must be positive
+    with pytest.raises(ValueError, message='amount must be positive'):
+        test_sdk.send_tokens(TEST_ADDRESS, 0)
+
+    # NOTE: sending more tokens than available will not cause immediate exception, but will
+    # result in failed transaction
+
     tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10)
     assert tx_id
     tx_status = test_sdk.get_transaction_status(tx_id)
@@ -155,7 +161,7 @@ def test_monitor_ether_transactions(test_sdk):
         assert amount == Decimal('0.001')
         tx_statuses[tx_id] = status
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, message='either from_address or to_address or both must be provided'):
         test_sdk.monitor_ether_transactions(my_callback)
 
     test_sdk.monitor_ether_transactions(my_callback, from_address=TEST_ADDRESS)
@@ -180,7 +186,7 @@ def test_monitor_token_transactions(test_sdk):
         assert amount == 10
         tx_statuses[tx_id] = status
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, message='either from_address or to_address or both must be provided'):
         test_sdk.monitor_token_transactions(my_callback)
 
     # TODO: test larger than account balance transfer
@@ -188,6 +194,7 @@ def test_monitor_token_transactions(test_sdk):
 
     test_sdk.monitor_token_transactions(my_callback, from_address=TEST_ADDRESS)
     tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10)
+
     sleep(2)
     assert tx_statuses.get(tx_id)
     assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
@@ -197,4 +204,3 @@ def test_monitor_token_transactions(test_sdk):
         sleep(10)
         waited += 10
     assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
-
