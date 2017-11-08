@@ -9,7 +9,7 @@ TEST_ADDRESS = '0x4c6527c2BEB032D46cfe0648072cAb641cA0aA80'
 TEST_PRIVATE_KEY = 'd60baaa34ed125af0570a3df7d4ad3e80dd5dc5070680573f8de0ecfc1977275'
 TEST_CONTRACT = '0xEF2Fcc998847DB203DEa15fC49d0872C7614910C'
 TEST_CONTRACT_ABI = json.loads('[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_newOwnerCandidate","type":"address"}],"name":"requestOwnershipTransfer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"issueTokens","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"acceptOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"newOwnerCandidate","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_by","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipRequested","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_from","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipTransferred","type":"event"}]')   # noqa: E501
-TEST_PROVIDER_ENDPOINT = 'http://159.89.9.81:8545' # 'https://ropsten.infura.io/WszLuPswARhYyyunji2r'
+TEST_PROVIDER_ENDPOINT =  'http://207.154.247.11:8545'  # 'https://ropsten.infura.io/WszLuPswARhYyyunji2r'
 
 
 def test_create_fail_empty_endpoint():
@@ -110,29 +110,19 @@ def test_get_address_token_balance(test_sdk):
     assert balance > 100000
 
 
-def test_send_ether(test_sdk):
+def test_send_ether_fail(test_sdk):
     with pytest.raises(ValueError, message='amount must be positive'):
         test_sdk.send_ether(TEST_ADDRESS, 0)
     with pytest.raises(ValueError, message='insufficient funds for gas * price + value'):
         test_sdk.send_ether(TEST_ADDRESS, 100)
 
-    tx_id = test_sdk.send_ether(TEST_ADDRESS, 0.001)
-    assert tx_id
-    tx_status = test_sdk.get_transaction_status(tx_id)
-    assert tx_status == kin.TransactionStatus.PENDING
 
-
-def test_send_tokens(test_sdk):
+def test_send_tokens_fail(test_sdk):
     with pytest.raises(ValueError, message='amount must be positive'):
         test_sdk.send_tokens(TEST_ADDRESS, 0)
 
-    # NOTE: sending more tokens than available will not cause immediate exception, but will
-    # result in failed transaction
-
-    tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10)
-    assert tx_id
-    tx_status = test_sdk.get_transaction_status(tx_id)
-    assert tx_status == kin.TransactionStatus.PENDING
+    # NOTE: sending more tokens than available will not cause immediate exception like with ether,
+    # but will result in failed onchain transaction
 
 
 def test_get_transaction_status(test_sdk):
@@ -156,24 +146,33 @@ def test_monitor_ether_transactions(test_sdk):
     tx_statuses = {}
 
     def my_callback(tx_id, status, from_address, to_address, amount):
-        assert from_address == TEST_ADDRESS.lower()
-        assert to_address == TEST_ADDRESS.lower()
+        if tx_id not in tx_statuses:  # not mine, skip it
+            return
+        assert from_address.lower() == TEST_ADDRESS.lower()
+        assert to_address.lower() == TEST_ADDRESS.lower()
         assert amount == Decimal('0.001')
         tx_statuses[tx_id] = status
 
     with pytest.raises(ValueError, message='either from_address or to_address or both must be provided'):
         test_sdk.monitor_ether_transactions(my_callback)
 
+    # start monitoring ether transactions
     test_sdk.monitor_ether_transactions(my_callback, from_address=TEST_ADDRESS)
+
+    # successful ether transfer
     tx_id = test_sdk.send_ether(TEST_ADDRESS, 0.001)
-    sleep(2)
-    assert tx_statuses.get(tx_id)
+    tx_statuses[tx_id] = kin.TransactionStatus.UNKNOWN
+
+    for wait in range(0, 30):
+        if tx_statuses[tx_id] > kin.TransactionStatus.UNKNOWN:
+            break
+        sleep(1)
     assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
 
-    waited = 0
-    while tx_statuses[tx_id] == kin.TransactionStatus.PENDING and waited <= 60:
-        sleep(10)
-        waited += 10
+    for wait in range(0, 90):
+        if tx_statuses[tx_id] > kin.TransactionStatus.PENDING:
+            break
+        sleep(1)
     assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 
 
@@ -181,26 +180,48 @@ def test_monitor_token_transactions(test_sdk):
     tx_statuses = {}
 
     def my_callback(tx_id, status, from_address, to_address, amount):
-        assert from_address == TEST_ADDRESS
-        assert to_address == TEST_ADDRESS
-        assert amount == 10
+        if tx_id not in tx_statuses:  # not mine, skip it
+            return
+        assert from_address.lower() == TEST_ADDRESS.lower()
+        assert to_address.lower() == TEST_ADDRESS.lower()
+        assert amount > 0
         tx_statuses[tx_id] = status
 
     with pytest.raises(ValueError, message='either from_address or to_address or both must be provided'):
         test_sdk.monitor_token_transactions(my_callback)
 
-    # TODO: test larger than account balance transfer
-    # tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10000000)
-
+    # start monitoring token transactions from my address
     test_sdk.monitor_token_transactions(my_callback, from_address=TEST_ADDRESS)
-    tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10)
 
-    sleep(2)
-    assert tx_statuses.get(tx_id)
+    # transfer more than available, must result in error
+    tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10000000)
+    tx_statuses[tx_id] = kin.TransactionStatus.UNKNOWN
+
+    for wait in range(0, 30):
+        if tx_statuses[tx_id] > kin.TransactionStatus.UNKNOWN:
+            break
+        sleep(1)
     assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
 
-    waited = 0
-    while tx_statuses[tx_id] == kin.TransactionStatus.PENDING and waited <= 60:
-        sleep(10)
-        waited += 10
+    for wait in range(0, 90):
+        if tx_statuses[tx_id] > kin.TransactionStatus.PENDING:
+            break
+        sleep(1)
+    assert tx_statuses[tx_id] == kin.TransactionStatus.FAIL
+
+    # successful token transfer
+    tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10)
+    tx_statuses[tx_id] = kin.TransactionStatus.UNKNOWN
+
+    for wait in range(0, 30):
+        if tx_statuses[tx_id] > kin.TransactionStatus.UNKNOWN:
+            break
+        sleep(1)
+    assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
+
+    for wait in range(0, 90):
+        if tx_statuses[tx_id] > kin.TransactionStatus.PENDING:
+            break
+        sleep(1)
     assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
+
