@@ -457,7 +457,10 @@ class TokenSDK(object):
                 raw_tx_hex = self._build_raw_transaction(address, amount, data)
                 return self.web3.eth.sendRawTransaction(raw_tx_hex)
             except ValueError as ve:
-                if ve.message == 'nonce too low' and attempts < RETRY_ATTEMPTS:
+                if 'message' in ve.args[0] \
+                        and ('nonce too low' in ve.args[0]['message']
+                             or 'another transaction with same nonce' in ve.args[0]['message']) \
+                        and attempts < RETRY_ATTEMPTS:
                     logging.warning('transaction nonce error, retrying')
                     attempts += 1
                     sleep(RETRY_DELAY)  # TODO: exponential backoff, configiurable retry?
