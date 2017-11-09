@@ -191,7 +191,7 @@ def test_monitor_token_transactions(test_sdk):
         test_sdk.monitor_token_transactions(my_callback)
 
     # start monitoring token transactions from my address
-    test_sdk.monitor_token_transactions(my_callback, from_address=TEST_ADDRESS)
+    test_sdk.monitor_token_transactions(my_callback, to_address=TEST_ADDRESS)
 
     # transfer more than available, must result in error
     tx_id = test_sdk.send_tokens(TEST_ADDRESS, 10000000)
