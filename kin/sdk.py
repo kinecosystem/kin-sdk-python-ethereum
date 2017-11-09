@@ -357,18 +357,16 @@ class TokenSDK(object):
         def pending_tx_callback_adapter_fn(tx_id):
             tx = self.web3.eth.getTransaction(tx_id)
             ok, tx_from, tx_to, amount = self._check_parse_contract_tx(tx, filter_args)
-            if not ok:
-                return
-            callback_fn(tx['hash'], TransactionStatus.PENDING, tx_from, tx_to, amount)
+            if ok:
+                callback_fn(tx['hash'], TransactionStatus.PENDING, tx_from, tx_to, amount)
 
         def new_block_callback_adapter_fn(block_id):
             block = self.web3.eth.getBlock(block_id, True)
             for tx in block['transactions']:
                 ok, tx_from, tx_to, amount = self._check_parse_contract_tx(tx, filter_args)
-                if not ok:
-                    return
-                status = self._get_tx_status(tx)
-                callback_fn(tx['hash'], status, tx_from, tx_to, amount)
+                if ok:
+                    status = self._get_tx_status(tx)
+                    callback_fn(tx['hash'], status, tx_from, tx_to, amount)
 
         if not self._pending_tx_filter:
             self._pending_tx_filter = self.web3.eth.filter('pending')

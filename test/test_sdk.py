@@ -76,7 +76,7 @@ def test_create_with_private_key():
     assert sdk.get_address() == TEST_ADDRESS
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def test_sdk():
     return kin.TokenSDK(provider_endpoint_uri=TEST_PROVIDER_ENDPOINT, private_key=TEST_PRIVATE_KEY,
                         contract_address=TEST_CONTRACT, contract_abi=TEST_CONTRACT_ABI)
