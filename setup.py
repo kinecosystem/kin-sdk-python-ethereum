@@ -20,13 +20,14 @@ setup(
     license='MIT',
     packages=["kin"],
     long_description=open("README.md").read(),
+    keywords = ["kin", "cryptocurrency", "blockchain"],
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Intended Audience :: Developers',
-        'Topic :: Software Development :: Libraries',
+        'Development Status :: 4 - Beta',
+        'Topic :: Software Development :: Libraries :: Python Modules',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4'
+        'Programming Language :: Python :: 3',
     ],
     install_requires=requires,
     tests_require=tests_requires,
