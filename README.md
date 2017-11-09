@@ -88,9 +88,9 @@ tx_id = kin_sdk.send_tokens('to address', 10)
 sleep(2)
 assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
 
-# Wait until the transaction is confirmed 
+# Wait until transaction is confirmed 
 waited = 0
-while tx_statuses[tx_id] == kin.TransactionStatus.PENDING and waited <= 60:
+while tx_statuses[tx_id] != kin.TransactionStatus.SUCCESS and waited <= 60:
     sleep(10)
     waited += 10
 assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS

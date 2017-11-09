@@ -1,6 +1,44 @@
+# -*- coding: utf-8 -*
+
+# MIT License
+#
+# Copyright (c) 2017 Kin Foundation
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+"""
+The :class:`~kin.TokenSDK` class is the primary interface to the KIN Python SDK.
+It maintains a context for a connection with an Ethereum JSON-RPC node and hides
+all the specifics of dealing with Ethereum JSON-RPC API.
+"""
 
 import json
 from time import sleep
+
+from eth_keys import keys
+from eth_keys.exceptions import ValidationError
+from eth_abi import decode_abi
+from ethereum.transactions import Transaction
+from .exceptions import (
+    SdkConfigurationError,
+    SdkNotConfiguredError,
+)
 
 import rlp
 from web3 import Web3, HTTPProvider
@@ -11,14 +49,6 @@ from web3.utils.encoding import (
     to_hex,
 )
 from web3.utils.validation import validate_address
-from eth_keys import keys
-from eth_keys.exceptions import ValidationError
-from eth_abi import decode_abi
-from ethereum.transactions import Transaction
-from .exceptions import (
-    SdkConfigurationError,
-    SdkNotConfiguredError,
-)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -27,6 +57,7 @@ logger = logging.getLogger(__name__)
 KIN_CONTRACT_ADDRESS = '0x818fc6c2ec5986bc6e2cbf00939d90556ab12ce5'
 KIN_ABI = json.loads('[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_newOwnerCandidate","type":"address"}],"name":"requestOwnershipTransfer","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"isMinting","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_amount","type":"uint256"}],"name":"mint","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"acceptOwnership","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"newOwnerCandidate","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_tokenAddress","type":"address"},{"name":"_amount","type":"uint256"}],"name":"transferAnyERC20Token","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"endMinting","outputs":[],"payable":false,"type":"function"},{"anonymous":false,"inputs":[],"name":"MintingEnded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_by","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipRequested","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_from","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipTransferred","type":"event"}]')
 TRANSFER_ABI_SIGNATURE = '0xa9059cbb'
+
 # default gas params
 DEFAULT_GAS_PER_TX = 90000
 DEFAULT_GAS_PRICE = 50 * 10 ** 9  # 50 gwei
@@ -47,6 +78,39 @@ class TokenSDK(object):
 
     def __init__(self, private_key='', provider='', provider_endpoint_uri='https://mainnet.infura.io',
                  contract_address=KIN_CONTRACT_ADDRESS, contract_abi=KIN_ABI):
+        """Create a new instance of the KIN SDK.
+
+        The SDK needs a JSON-RPC provider, contract definitions and the wallet private key.
+        The user may pass either a provider or a provider endpoint URI, in which case a default
+        `web3:providers:HTTPProvider` will be created.
+
+        If private_key is not provided, the SDK can still be used in "anonymous" mode with only the following
+        functions available:
+            - get_address_ether_balance
+            - get_transaction_status
+            - monitor_ether_transactions
+
+        :param str private_key: a private key to initialize the wallet with. If not provided,
+            the wallet will not be initialized and methods needing the wallet will raise exception.
+
+        :param provider: JSON-RPC provider to work with. If not provided, a default `web3:providers:HTTPProvider`
+            is used, inited with provider_endpoint_uri.
+        :type provider: web3:providers:BaseProvider
+
+        :param str provider_endpoint_uri: a URI to use with a default HTTPProvider. If not provided, a
+            default endpoint will be used.
+
+        :param contract_address: the address of the token contract. If not provided, a default KIN
+            contract will be used.
+
+        :param obj contract_abi: The contract ABI. If not provided, a default KIN contract ABI will be used.
+
+        :returns: An instance of the SDK.
+        :rtype: :class:`~kin.TokenSDK`
+
+        :raises: :class:`~kin.exceptions.SdkConfigurationError` if some of the configuration parameters are invalid.
+        """
+
         if not provider and not provider_endpoint_uri:
             raise SdkConfigurationError('either provider or provider endpoint must be provided')
 
@@ -89,38 +153,103 @@ class TokenSDK(object):
         self._new_block_filter = None
 
     def get_address(self):
+        """Get public address of the SDK wallet.
+        The wallet is configured by a private key supplied in during SDK initialization.
+
+        :returns: public address
+        :rtype: str
+
+        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        """
         if not self.address:
             raise SdkNotConfiguredError('address not configured')
         return self.address
 
     def get_ether_balance(self):
+        """Get Ether balance of the SDK wallet.
+        The wallet is configured by a private key supplied in during SDK initialization.
+
+        :returns: : the balance in Ether.
+        :rtype: Decimal
+
+        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        """
         if not self.address:
             raise SdkNotConfiguredError('address not configured')
         return self.web3.fromWei(self.web3.eth.getBalance(self.address), 'ether')
 
     def get_token_balance(self):
+        """Get KIN balance of the SDK wallet.
+        The wallet is configured by a private key supplied in during SDK initialization.
+
+        :returns: : the balance in KIN.
+        :rtype: Decimal
+
+        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        """
         if not self.address:
             raise SdkNotConfiguredError('address not configured')
         return self.web3.fromWei(self.token_contract.call().balanceOf(self.address), 'ether')
 
     def get_address_ether_balance(self, address):
+        """Get Ether balance of a public address.
+
+        :param: str address: a public address.
+
+        :returns: the balance in Ether.
+        :rtype: Decimal
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
         validate_address(address)
         return self.web3.fromWei(self.web3.eth.getBalance(address), 'ether')
 
     def get_address_token_balance(self, address):
+        """Get KIN balance of a public address.
+
+        :returns: : the balance in KIN.
+        :rtype: Decimal
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
         validate_address(address)
         return self.web3.fromWei(self.token_contract.call().balanceOf(address), 'ether')
 
     def send_ether(self, address, amount):
+        """Send Ether from my wallet to address.
+
+        :param str address: the address to send Ether to.
+
+        :param float amount: the amount of Ether to transfer.
+
+        :return: transaction id
+        :rtype: str
+
+        :raises: ValueError: if the amount is negative.
+        :raises: ValueError: if the nonce is incorrect.
+        :raises: ValueError if insufficient funds for for gas * price + value.
+        """
         if not self.address:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
         if amount <= 0:
             raise ValueError('amount must be positive')
-        raw_tx_hex = self._build_raw_transaction(address, amount)
-        return self._send_with_retry(raw_tx_hex)
+        return self._send_raw_transaction(address, amount)
 
     def send_tokens(self, address, amount):
+        """Send tokens from my wallet to address.
+
+        :param str address: the address to send Ether to.
+
+        :param float amount: the amount of Ether to transfer.
+
+        :return: transaction id
+        :rtype: str
+
+        :raises: ValueError: if the amount is negative.
+        :raises: ValueError: if the nonce is incorrect.
+        :raises: ValueError if insufficient funds for for gas * price.
+        """
         if not self.address:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
@@ -128,16 +257,32 @@ class TokenSDK(object):
             raise ValueError('amount must be positive')
         hex_data = self.token_contract._encode_transaction_data('transfer', args=(address, self.web3.toWei(amount, 'ether')))
         data = hexstr_if_str(to_bytes, hex_data)
-        raw_tx_hex = self._build_raw_transaction(self.token_contract.address, 0, data)
-        return self._send_with_retry(raw_tx_hex)
+        return self._send_raw_transaction(self.token_contract.address, 0, data)
 
     def get_transaction_status(self, tx_id):
+        """Get the transaction status.
+
+        :param tx_id: transaction id (hash).
+
+        :return: transaction status.
+        :rtype: `~kin.TransactionStatus`
+        """
         tx = self.web3.eth.getTransaction(tx_id)
         if not tx:
             return TransactionStatus.UNKNOWN
         return self._get_tx_status(tx)
 
     def monitor_ether_transactions(self, callback_fn, from_address=None, to_address=None):
+        """Monitors Ether transactions and calls back on transactions matching the supplied filter.
+
+        :param callback_fn: the callback function with the signature `func(tx_id, status, from_address, to_address, amount)`
+
+        :param str from_address: the transactions must originate from this address. If not provided,
+            all addresses will match.
+
+        :param str to_address: the transactions must be sent to this address. If not provided,
+            all addresses will match.
+        """
         filter_args = self._get_filter_args(from_address, to_address)
 
         def check_and_callback(tx, status):
@@ -166,6 +311,18 @@ class TokenSDK(object):
         self._new_block_filter.watch(new_block_callback_adapter_fn)
 
     def monitor_token_transactions(self, callback_fn, from_address=None, to_address=None):
+        """Monitors token transactions and calls back on transactions matching the supplied filter.
+
+        :param callback_fn: the callback function with the signature `func(tx_id, status, from_address, to_address, amount)`
+
+        :param str from_address: the transactions must originate from this address. If not provided,
+            all addresses will match.
+
+        :param str to_address: the transactions must be sent to this address. If not provided,
+            all addresses will match. Note that token transactions are always sent to the contract, and the real
+            recipient is found in transaction data. This function will decode the data and return the correct
+            recipient address.
+        """
         filter_args = self._get_filter_args(from_address, to_address)
 
         '''
@@ -208,6 +365,8 @@ class TokenSDK(object):
             block = self.web3.eth.getBlock(block_id, True)
             for tx in block['transactions']:
                 ok, tx_from, tx_to, amount = self._check_parse_contract_tx(tx, filter_args)
+                if not ok:
+                    return
                 status = self._get_tx_status(tx)
                 callback_fn(tx['hash'], status, tx_from, tx_to, amount)
 
@@ -222,6 +381,14 @@ class TokenSDK(object):
     # helpers
 
     def _get_tx_status(self, tx):
+        """Determines transaction status.
+
+        :param tx: transaction object
+        :type tx: dic
+
+        :return: the status of this transaction.
+        :rtype: `kin.TransactionStatus`
+        """
         if not tx.get('blockNumber'):
             return TransactionStatus.PENDING
 
@@ -244,6 +411,18 @@ class TokenSDK(object):
         return TransactionStatus.FAIL
 
     def _check_parse_contract_tx(self, tx, filter_args):
+        """Parse contract transaction and check whether it matches the supplied filter.
+        If the transaction matches the filter, the first returned value will be True, and the rest will be
+        correctly filled. If there is no match, the first returned value is False and the rest are empty.
+
+        :param tx: transaction object
+        :type tx: dict
+
+        :param filter_args: a filter that has the fields 'to', 'from' or both.
+        :type filter_args: dict
+
+        :return: matching status, from address, to address, token amount
+        """
         if not tx.get('to') or tx['to'].lower() != self.token_contract.address.lower():  # must be sent to our contract
             return False, '', '', 0
         if not tx.get('input') or tx['input'] == '0x':  # not a contract transaction
@@ -260,19 +439,56 @@ class TokenSDK(object):
             return True, tx['from'], to, amount
         return False, '', '', 0
 
-    def _send_with_retry(self, raw_tx_hex):
+    def _send_raw_transaction(self, address, amount, data=b''):
+        """Send transaction with retry.
+        Submitting a raw transaction can result in a nonce collision error. In this case, the submission is
+        retried with a new nonce.
+
+        :param str address: the target address.
+
+        :param float amount: the amount of Ether to send.
+
+        :param data: binary data to put into transaction.
+
+        :return: transaction id (hash)
+        :rtype: str
+        """
         attempts = 0
         while True:
             try:
+                raw_tx_hex = self._build_raw_transaction(address, amount, data)
                 return self.web3.eth.sendRawTransaction(raw_tx_hex)
             except ValueError as ve:
-                # ValueError: {u'message': u'nonce too low', u'code': -32000}
                 if ve.message == 'nonce too low' and attempts < RETRY_ATTEMPTS:
                     logging.warning('transaction nonce error, retrying')
                     attempts += 1
-                    sleep(RETRY_DELAY)  # TODO: exponential backoff?
+                    sleep(RETRY_DELAY)  # TODO: exponential backoff, configiurable retry?
                     continue
-                raise ve
+                raise
+
+    def _build_raw_transaction(self, address, amount, data=b''):
+        """Builds a raw transaction string.
+
+        :param str address: the target address.
+
+        :param float amount: the amount of Ether to send.
+
+        :param data: binary data to put into transaction.
+
+        :return: a raw transaction string.
+        :rtype: str
+        """
+        nonce = self.web3.eth.getTransactionCount(self.address, 'pending')
+        # TODO: replace pyethereum code with the newer code in web3.py (v4) and remove pyethereum from requirements.
+        tx = Transaction(
+            nonce=nonce,
+            gasprice=DEFAULT_GAS_PRICE,   # TODO: optimal gas price
+            startgas=DEFAULT_GAS_PER_TX,  # TODO: optimal gas limit
+            to=address,
+            value=self.web3.toWei(amount, 'ether'),
+            data=data,
+        ).sign(self.private_key)
+        return self.web3.toHex(rlp.encode(tx))
 
     @staticmethod
     def _get_filter_args(from_address, to_address):
@@ -286,19 +502,6 @@ class TokenSDK(object):
             validate_address(to_address)
             filter_args['to'] = to_address
         return filter_args
-
-    def _build_raw_transaction(self, address, amount, data=b''):
-        nonce = self.web3.eth.getTransactionCount(self.address, 'pending')
-        # TODO: replace pyethereum code with the newer code in web3.py (v4) and remove pyethereum from requirements.
-        tx = Transaction(
-            nonce=nonce,
-            gasprice=DEFAULT_GAS_PRICE,   # TODO: optimal gas price
-            startgas=DEFAULT_GAS_PER_TX,  # TODO: optimal gas limit
-            to=address,
-            value=self.web3.toWei(amount, 'ether'),
-            data=data,
-        ).sign(self.private_key)
-        return self.web3.toHex(rlp.encode(tx))
 
 
 

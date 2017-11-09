@@ -41,7 +41,7 @@ setup(
         'py>=1.4.34',
         'py-ecc>=1.1.3',
         'pycparser>=2.18',
-        'pycryptodome>=3.4.6',
+        'pycryptodome>=3.4.7',
         'pyethash>=0.1.27',
         'pylru>=1.0.9',
         'pysha3>=1.0.2',
