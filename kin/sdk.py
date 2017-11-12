@@ -31,9 +31,10 @@ all the specifics of dealing with Ethereum JSON-RPC API.
 import json
 from time import sleep
 
+from eth_abi import decode_abi
 from eth_keys import keys
 from eth_keys.exceptions import ValidationError
-from eth_abi import decode_abi
+from eth_utils import function_signature_to_4byte_selector
 from ethereum.transactions import Transaction
 from .exceptions import (
     SdkConfigurationError,
@@ -56,7 +57,7 @@ logger = logging.getLogger(__name__)
 # KIN production contract
 KIN_CONTRACT_ADDRESS = '0x818fc6c2ec5986bc6e2cbf00939d90556ab12ce5'
 KIN_ABI = json.loads('[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_newOwnerCandidate","type":"address"}],"name":"requestOwnershipTransfer","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"isMinting","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_amount","type":"uint256"}],"name":"mint","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"acceptOwnership","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"newOwnerCandidate","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_tokenAddress","type":"address"},{"name":"_amount","type":"uint256"}],"name":"transferAnyERC20Token","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"endMinting","outputs":[],"payable":false,"type":"function"},{"anonymous":false,"inputs":[],"name":"MintingEnded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_by","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipRequested","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_from","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipTransferred","type":"event"}]')
-TRANSFER_ABI_SIGNATURE = '0xa9059cbb'
+ERC20_TRANSFER_ABI_PREFIX = to_hex(function_signature_to_4byte_selector('transfer(address, uint256)'))
 
 # default gas params
 DEFAULT_GAS_PER_TX = 90000
@@ -425,10 +426,10 @@ class TokenSDK(object):
             return False, '', '', 0
         if not tx.get('input') or tx['input'] == '0x':  # not a contract transaction
             return False, '', '', 0
-        if not tx['input'].startswith(TRANSFER_ABI_SIGNATURE):  # only interested in calls to 'transfer' method
+        if not tx['input'].startswith(ERC20_TRANSFER_ABI_PREFIX):  # only interested in calls to 'transfer' method
             return False, '', '', 0
 
-        to, amount = decode_abi(['uint256', 'uint256'], tx['input'][len(TRANSFER_ABI_SIGNATURE):])
+        to, amount = decode_abi(['uint256', 'uint256'], tx['input'][len(ERC20_TRANSFER_ABI_PREFIX):])
         to = to_hex(to)
         amount = self.web3.fromWei(amount, 'ether')
         if ('from' in filter_args and tx['from'].lower() == filter_args['from'].lower() and
