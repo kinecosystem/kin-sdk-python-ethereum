@@ -36,10 +36,6 @@ from eth_keys import keys
 from eth_keys.exceptions import ValidationError
 from eth_utils import function_signature_to_4byte_selector
 from ethereum.transactions import Transaction
-from .exceptions import (
-    SdkConfigurationError,
-    SdkNotConfiguredError,
-)
 
 import rlp
 from web3 import Web3, HTTPProvider
@@ -51,24 +47,34 @@ from web3.utils.encoding import (
 )
 from web3.utils.validation import validate_address
 
+from .exceptions import (
+    SdkConfigurationError,
+    SdkNotConfiguredError,
+)
+
 import logging
 logger = logging.getLogger(__name__)
 
-# KIN production contract
+
+# KIN production contract.
 KIN_CONTRACT_ADDRESS = '0x818fc6c2ec5986bc6e2cbf00939d90556ab12ce5'
-KIN_ABI = json.loads('[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_newOwnerCandidate","type":"address"}],"name":"requestOwnershipTransfer","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"isMinting","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_amount","type":"uint256"}],"name":"mint","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"acceptOwnership","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"newOwnerCandidate","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_tokenAddress","type":"address"},{"name":"_amount","type":"uint256"}],"name":"transferAnyERC20Token","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"endMinting","outputs":[],"payable":false,"type":"function"},{"anonymous":false,"inputs":[],"name":"MintingEnded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_by","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipRequested","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_from","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipTransferred","type":"event"}]')
+KIN_ABI = json.loads('[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_newOwnerCandidate","type":"address"}],"name":"requestOwnershipTransfer","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"isMinting","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_amount","type":"uint256"}],"name":"mint","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"acceptOwnership","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"newOwnerCandidate","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_tokenAddress","type":"address"},{"name":"_amount","type":"uint256"}],"name":"transferAnyERC20Token","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"endMinting","outputs":[],"payable":false,"type":"function"},{"anonymous":false,"inputs":[],"name":"MintingEnded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_by","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipRequested","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_from","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipTransferred","type":"event"}]')  # noqa: E501
+
+# ERC20 contract consts.
 ERC20_TRANSFER_ABI_PREFIX = to_hex(function_signature_to_4byte_selector('transfer(address, uint256)'))
 
-# default gas params
+# default gas configuration.
 DEFAULT_GAS_PER_TX = 90000
 DEFAULT_GAS_PRICE = 50 * 10 ** 9  # 50 gwei
 
-# request retry params
+# default request retry configuration.
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 0.3
 
 
+# noinspection PyClassHasNoInit
 class TransactionStatus:
+    """Transaction status enumerator."""
     UNKNOWN = 0
     PENDING = 1
     SUCCESS = 2
@@ -96,15 +102,15 @@ class TokenSDK(object):
 
         :param provider: JSON-RPC provider to work with. If not provided, a default `web3:providers:HTTPProvider`
             is used, inited with provider_endpoint_uri.
-        :type provider: web3:providers:BaseProvider
+        :type provider: :class:`web3:providers:BaseProvider`
 
         :param str provider_endpoint_uri: a URI to use with a default HTTPProvider. If not provided, a
             default endpoint will be used.
 
-        :param contract_address: the address of the token contract. If not provided, a default KIN
-            contract will be used.
+        :param str contract_address: the address of the token contract. If not provided, a default KIN
+            contract address will be used.
 
-        :param obj contract_abi: The contract ABI. If not provided, a default KIN contract ABI will be used.
+        :param dict contract_abi: The contract ABI. If not provided, a default KIN contract ABI will be used.
 
         :returns: An instance of the SDK.
         :rtype: :class:`~kin.TokenSDK`
@@ -157,7 +163,7 @@ class TokenSDK(object):
         """Get public address of the SDK wallet.
         The wallet is configured by a private key supplied in during SDK initialization.
 
-        :returns: public address
+        :returns: public address of the wallet.
         :rtype: str
 
         :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
@@ -170,7 +176,7 @@ class TokenSDK(object):
         """Get Ether balance of the SDK wallet.
         The wallet is configured by a private key supplied in during SDK initialization.
 
-        :returns: : the balance in Ether.
+        :returns: : the balance in Ether of the internal wallet.
         :rtype: Decimal
 
         :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
@@ -183,7 +189,7 @@ class TokenSDK(object):
         """Get KIN balance of the SDK wallet.
         The wallet is configured by a private key supplied in during SDK initialization.
 
-        :returns: : the balance in KIN.
+        :returns: : the balance in KIN of the internal wallet.
         :rtype: Decimal
 
         :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
@@ -195,9 +201,9 @@ class TokenSDK(object):
     def get_address_ether_balance(self, address):
         """Get Ether balance of a public address.
 
-        :param: str address: a public address.
+        :param: str address: a public address to query.
 
-        :returns: the balance in Ether.
+        :returns: the balance in Ether of the provided address.
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
@@ -208,7 +214,9 @@ class TokenSDK(object):
     def get_address_token_balance(self, address):
         """Get KIN balance of a public address.
 
-        :returns: : the balance in KIN.
+        :param: str address: a public address to query.
+
+        :returns: : the balance in KIN of the provided address.
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
@@ -226,7 +234,8 @@ class TokenSDK(object):
         :return: transaction id
         :rtype: str
 
-        :raises: ValueError: if the amount is negative.
+        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        :raises: ValueError: if the amount is not positive.
         :raises: ValueError: if the nonce is incorrect.
         :raises: ValueError if insufficient funds for for gas * price + value.
         """
@@ -240,14 +249,15 @@ class TokenSDK(object):
     def send_tokens(self, address, amount):
         """Send tokens from my wallet to address.
 
-        :param str address: the address to send Ether to.
+        :param str address: the address to send tokens to.
 
-        :param float amount: the amount of Ether to transfer.
+        :param float amount: the amount of tokens to transfer.
 
-        :return: transaction id
+        :returns: transaction id
         :rtype: str
 
-        :raises: ValueError: if the amount is negative.
+        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        :raises: ValueError: if the amount is not positive.
         :raises: ValueError: if the nonce is incorrect.
         :raises: ValueError if insufficient funds for for gas * price.
         """
@@ -263,9 +273,9 @@ class TokenSDK(object):
     def get_transaction_status(self, tx_id):
         """Get the transaction status.
 
-        :param tx_id: transaction id (hash).
+        :param str tx_id: transaction id (hash).
 
-        :return: transaction status.
+        :returns: transaction status.
         :rtype: `~kin.TransactionStatus`
         """
         tx = self.web3.eth.getTransaction(tx_id)
@@ -326,7 +336,7 @@ class TokenSDK(object):
         """
         filter_args = self._get_filter_args(from_address, to_address)
 
-        '''
+        '''Not used: event log filtering.
         filter_params = {
             'filter': filter_args,
             'toBlock': 'pending',
@@ -382,10 +392,9 @@ class TokenSDK(object):
     def _get_tx_status(self, tx):
         """Determines transaction status.
 
-        :param tx: transaction object
-        :type tx: dic
+        :param dict tx: transaction object
 
-        :return: the status of this transaction.
+        :returns: the status of this transaction.
         :rtype: `kin.TransactionStatus`
         """
         if not tx.get('blockNumber'):
@@ -414,13 +423,11 @@ class TokenSDK(object):
         If the transaction matches the filter, the first returned value will be True, and the rest will be
         correctly filled. If there is no match, the first returned value is False and the rest are empty.
 
-        :param tx: transaction object
-        :type tx: dict
+        :param dict tx: transaction object
 
-        :param filter_args: a filter that has the fields 'to', 'from' or both.
-        :type filter_args: dict
+        :param dict filter_args: a filter that contains fields 'to', 'from' or both.
 
-        :return: matching status, from address, to address, token amount
+        :returns: matching status, from address, to address, token amount
         """
         if not tx.get('to') or tx['to'].lower() != self.token_contract.address.lower():  # must be sent to our contract
             return False, '', '', 0
@@ -447,9 +454,9 @@ class TokenSDK(object):
 
         :param float amount: the amount of Ether to send.
 
-        :param data: binary data to put into transaction.
+        :param data: binary data to put into transaction data field.
 
-        :return: transaction id (hash)
+        :returns: transaction id (hash)
         :rtype: str
         """
         attempts = 0
@@ -464,7 +471,7 @@ class TokenSDK(object):
                         and attempts < RETRY_ATTEMPTS:
                     logging.warning('transaction nonce error, retrying')
                     attempts += 1
-                    sleep(RETRY_DELAY)  # TODO: exponential backoff, configiurable retry?
+                    sleep(RETRY_DELAY)  # TODO: exponential backoff, configurable retry
                     continue
                 raise
 
@@ -477,7 +484,7 @@ class TokenSDK(object):
 
         :param data: binary data to put into transaction.
 
-        :return: a raw transaction string.
+        :returns: a raw transaction as a string of hex chars.
         :rtype: str
         """
         nonce = self.web3.eth.getTransactionCount(self.address, 'pending')
