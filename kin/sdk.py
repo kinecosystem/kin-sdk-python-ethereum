@@ -297,7 +297,7 @@ class TokenSDK(object):
         filter_args = self._get_filter_args(from_address, to_address)
 
         def check_and_callback(tx, status):
-            if tx.get('input') and tx['input'] != '0x':  # this is a contract transaction, skip it
+            if tx.get('input') and tx['input'] != '0x0':  # this is a contract transaction, skip it
                 return
             if ('from' in filter_args and tx['from'].lower() == filter_args['from'].lower() and
                     ('to' not in filter_args or tx['to'].lower() == filter_args['to'].lower()) or

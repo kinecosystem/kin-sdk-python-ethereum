@@ -96,6 +96,27 @@ while tx_statuses[tx_id] != kin.TransactionStatus.SUCCESS and waited <= 60:
 assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 ```
 
+## Development
+
+```bash
+# setup virtualenv
+$ mkvirtualenv kin-python-sdk
+$ workon kin-python-sdk
+
+# setup pip and npm dependencies
+$ make init
+
+# work on code ...
+
+# test
+$ make test
+```
+
+The `make test` flow is as follows:
+- run `testrpc` with predefined accounts filled with ether
+- run `truffle deploy --reset` to compile and deploy your contract. This will aso add some tokens to the first account.
+- run `python -m pytest -s -x test` to test your code
+
 ## Support & Discussion
 
 ## License
