@@ -1,5 +1,6 @@
 
 # Kin Python SDK 
+[![Build Status](https://travis-ci.com/kinfoundation/kin-sdk-python.svg?token=f7PF9BYUzqkMQU5JpUvN)](https://travis-ci.com/kinfoundation/kin-sdk-python)
 
 ## Requirements.
 
@@ -124,4 +125,3 @@ Code released under [MIT LICENSE](LICENSE)
 
 ## Contributions 
  Pull requests and new issues are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details. 
- 

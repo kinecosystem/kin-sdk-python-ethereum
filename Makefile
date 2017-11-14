@@ -12,7 +12,7 @@ init:
 .PHONY: init
 
 test: truffle
-	python -m pytest -s -x test
+	python -m pytest --cov=kin -s -x test
 .PHONY: test
 
 truffle: testrpc truffle-clean
