@@ -17,7 +17,7 @@ setup(
     maintainer='David Bolshoy',
     maintainer_email='david.bolshoy@kik.com',
     url='https://github.com/kinfoundation/kin-sdk-python',
-    license='MIT',
+    license='GPLv2',
     packages=["kin"],
     long_description=open("README.md").read(),
     keywords = ["kin", "cryptocurrency", "blockchain"],
