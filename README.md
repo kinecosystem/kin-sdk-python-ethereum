@@ -121,7 +121,7 @@ The `make test` flow is as follows:
 ## Support & Discussion
 
 ## License
-Code released under [MIT LICENSE](LICENSE)  
+Code released under [GPLv2 license](LICENSE)
 
 ## Contributions 
  Pull requests and new issues are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details. 
