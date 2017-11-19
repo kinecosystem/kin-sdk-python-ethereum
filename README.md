@@ -12,6 +12,17 @@ Make sure you have Python 2 >=2.7.9.
 pip install git+https://github.com/kinfoundation/kin-sdk-python.git
 ```
 
+### Installation in Google App Engine Python Standard Environment
+[GAE Python Standard environment](https://cloud.google.com/appengine/docs/standard/) executes Python 
+application code using a pre-loaded Python interpreter in a safe sandboxed environment. The interpreter cannot 
+load Python services with C code; it is a "pure" Python environment. However, the required
+[web3 package](https://pypi.python.org/pypi/web3/) requires other packages that are natively implemented, namely
+[pysha3](https://pypi.python.org/pypi/pysha3) and [cytoolz](https://pypi.python.org/pypi/cytoolz).
+In order to overcome this limitation, do the following:
+1. Replace the `sha3.py` installed by pysha3 with the [attached sha3.py](sha3.py.alt).
+2. Replace the installed `cytoolz` package with the `toolz` package.
+
+
 ## Usage
 
 ### Initialization
@@ -33,6 +44,7 @@ kin_sdk = kin.TokenSDK(private_key='a60baaa34ed125af0570a3df7d4cd3e80dd5dc507068
 kin_sdk = kin.TokenSDK(provider_endpoint_uri='json-rpc endpoint uri', private_key='my private key',
                        contract_address='my contract address', contract_abi='abi of my contract as json')
 ````
+ 
 
 ### Get Wallet Details
 ```python
