@@ -2,6 +2,11 @@
 # Kin Python SDK 
 [![Build Status](https://travis-ci.com/kinfoundation/kin-sdk-python.svg?token=f7PF9BYUzqkMQU5JpUvN)](https://travis-ci.com/kinfoundation/kin-sdk-python)
 
+## Disclosure
+
+The SDK is not yet ready for third-party use by digital services in the Kin ecosystem.
+It is still tested internally by Kik as part of [initial product launch, version 2](https://medium.com/kinfoundation/context-around-iplv2-4b4ec3734417).
+
 ## Requirements.
 
 Make sure you have Python 2 >=2.7.9.
