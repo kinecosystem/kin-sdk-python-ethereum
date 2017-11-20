@@ -15,6 +15,14 @@ test: truffle
 	python -m pytest --cov=kin -s -x test
 .PHONY: test
 
+test: truffle
+	python -m pytest --cov=kin -s -x test
+.PHONY: test
+
+test-ropsten:
+	python -m pytest --ropsten --cov=kin -s -x test
+.PHONY: test
+
 truffle: testrpc truffle-clean
 	cd ./test/truffle_env && npm run-script truffle
 .PHONY: truffle

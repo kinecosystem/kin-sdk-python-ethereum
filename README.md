@@ -41,18 +41,20 @@ kin_sdk = kin.TokenSDK()
 kin_sdk = kin.TokenSDK(private_key='a60baaa34ed125af0570a3df7d4cd3e80dd5dc5070680573f8de0ecfc1957575')
 
 # Init SDK with custom parameters
-kin_sdk = kin.TokenSDK(provider_endpoint_uri='json-rpc endpoint uri', private_key='my private key',
+kin_sdk = kin.TokenSDK(provider_endpoint_uri='JSON-RPC endpoint URI', private_key='my private key',
                        contract_address='my contract address', contract_abi='abi of my contract as json')
 ````
- 
+For more examples, see the [SDK test file](test/test_sdk.py). The file also contains pre-defined values for testing
+with testrpc and Ropsten.
+
 
 ### Get Wallet Details
 ```python
-# Get my public address
+# Get my public address. The address is derived from the private key the SDK was inited with.
 address = kin_sdk.get_address()
 ```
 
-### Getting Balance
+### Getting Account Balance
 ```python
 # Get Ether balance of my account
 eth_balance = kin_sdk.get_ether_balance()
@@ -69,10 +71,10 @@ kin_balance = kin_sdk.get_address_token_balance('address')
 
 ### Sending Coin
 ```python
-# Send Ether from my account to some address
+# Send Ether from my account to some address. The amount is in Ether.
 tx_id = kin_sdk.send_ether('address', 10)
 
-# Send KIN from my account to some address
+# Send KIN from my account to some address. The amount is in KIN.
 tx_id = kin_sdk.send_tokens('address', 10)
 ```
 
@@ -98,14 +100,17 @@ kin_sdk.monitor_token_transactions(mycallback, from_address=kin_sdk.get_address(
 tx_id = kin_sdk.send_tokens('to address', 10)
 
 # In a second or two, the transaction enters the pending queue
-sleep(2)
-assert tx_statuses[tx_id] == kin.TransactionStatus.PENDING
+for wait in range(0, 5000):
+    if tx_statuses[tx_id] > kin.TransactionStatus.UNKNOWN:
+        break
+    sleep(0.001)
+assert tx_statuses[tx_id] >= kin.TransactionStatus.PENDING
 
 # Wait until transaction is confirmed 
-waited = 0
-while tx_statuses[tx_id] != kin.TransactionStatus.SUCCESS and waited <= 60:
-    sleep(10)
-    waited += 10
+for wait in range(0, 90):
+    if tx_statuses[tx_id] > kin.TransactionStatus.PENDING:
+        break
+    sleep(1)
 assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 ```
 
@@ -121,12 +126,15 @@ $ make init
 
 # work on code ...
 
-# test
+# test with local testrpc
 $ make test
+
+# test with Ropsten
+$ make test-ropsten
 ```
 
 The `make test` flow is as follows:
-- run `testrpc` with predefined accounts filled with ether
+- run `testrpc` with predefined accounts pre-filled with Ether.
 - run `truffle deploy --reset` to compile and deploy your contract. This will aso add some tokens to the first account.
 - run `python -m pytest -s -x test` to test your code
 

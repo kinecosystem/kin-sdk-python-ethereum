@@ -1,5 +1,6 @@
-'''
 import pytest
+
+'''
 import json
 from web3 import Web3
 from eth_tester import EthereumTester
@@ -87,9 +88,13 @@ def funded_account(web3, test_contract):
     #tx_id = test_contract.transact({'gas': 90000}).issueTokens(TEST_ADDRESS, web3.toWei(1000000, 'ether'))
     #assert tx_id
 
-@pytest.fixture(scope="session")
-def test_sdk(eth_tester_provider, test_contract, funded_account, CONTRACT_ABI):
-    return kin.TokenSDK(provider=eth_tester_provider, private_key=TEST_PRIVATE_KEY,
-                        contract_address=test_contract.address, contract_abi=CONTRACT_ABI)
-
 '''
+
+
+def pytest_addoption(parser):
+    parser.addoption("--ropsten", action="store_true", default=False, help="whether testing on Ropsten instead of local testrpc")
+
+
+@pytest.fixture(scope='session')
+def ropsten(request):
+    return request.config.getoption("--ropsten")

@@ -14,7 +14,10 @@ from time import sleep
 from eth_abi import decode_abi
 from eth_keys import keys
 from eth_keys.exceptions import ValidationError
-from eth_utils import function_signature_to_4byte_selector
+from eth_utils import (
+    encode_hex,
+    function_signature_to_4byte_selector
+)
 from ethereum.transactions import Transaction
 
 import rlp
@@ -25,7 +28,7 @@ from web3.utils.encoding import (
     to_bytes,
     to_hex,
 )
-from eth_utils.hexidecimal import encode_hex
+
 from web3.utils.validation import validate_address
 
 from .exceptions import (
@@ -42,14 +45,13 @@ KIN_CONTRACT_ADDRESS = '0x818fc6c2ec5986bc6e2cbf00939d90556ab12ce5'
 KIN_ABI = json.loads('[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_newOwnerCandidate","type":"address"}],"name":"requestOwnershipTransfer","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"isMinting","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_amount","type":"uint256"}],"name":"mint","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"acceptOwnership","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"newOwnerCandidate","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_tokenAddress","type":"address"},{"name":"_amount","type":"uint256"}],"name":"transferAnyERC20Token","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"endMinting","outputs":[],"payable":false,"type":"function"},{"anonymous":false,"inputs":[],"name":"MintingEnded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_by","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipRequested","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_from","type":"address"},{"indexed":true,"name":"_to","type":"address"}],"name":"OwnershipTransferred","type":"event"}]')  # noqa: E501
 
 # ERC20 contract consts.
-# ERC20_TRANSFER_ABI_PREFIX = to_hex(function_signature_to_4byte_selector('transfer(address, uint256)'))
 ERC20_TRANSFER_ABI_PREFIX = encode_hex(function_signature_to_4byte_selector('transfer(address, uint256)'))
 
 # default gas configuration.
 DEFAULT_GAS_PER_TX = 90000
 DEFAULT_GAS_PRICE = 50 * 10 ** 9  # 50 gwei
 
-# default request retry configuration.
+# default request retry configuration (linear backoff).
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 0.3
 
@@ -279,7 +281,7 @@ class TokenSDK(object):
         filter_args = self._get_filter_args(from_address, to_address)
 
         def check_and_callback(tx, status):
-            if tx.get('input') and tx['input'] != '0x0':  # this is a contract transaction, skip it
+            if tx.get('input') and not (tx['input'] == '0x' or tx['input'] == '0x0'):  # this is a contract transaction, skip it
                 return
             if ('from' in filter_args and tx['from'].lower() == filter_args['from'].lower() and
                     ('to' not in filter_args or tx['to'].lower() == filter_args['to'].lower()) or
@@ -288,6 +290,8 @@ class TokenSDK(object):
 
         def pending_tx_callback_adapter_fn(tx_id):
             tx = self.web3.eth.getTransaction(tx_id)
+            if not tx:  # probably invalid and removed from tx pool
+                return
             check_and_callback(tx, TransactionStatus.PENDING)
 
         def new_block_callback_adapter_fn(block_id):
@@ -349,6 +353,8 @@ class TokenSDK(object):
 
         def pending_tx_callback_adapter_fn(tx_id):
             tx = self.web3.eth.getTransaction(tx_id)
+            if not tx:  # probably invalid and removed from tx pool
+                return
             ok, tx_from, tx_to, amount = self._check_parse_contract_tx(tx, filter_args)
             if ok:
                 callback_fn(tx['hash'], TransactionStatus.PENDING, tx_from, tx_to, amount)
