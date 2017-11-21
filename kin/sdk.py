@@ -280,6 +280,22 @@ class TokenSDK(object):
             return TransactionStatus.UNKNOWN
         return self._get_tx_status(tx)
 
+    def get_num_transaction_confirmations(self, tx_id):
+        """Get the number of confirmations for transaction.
+
+        :param str tx_id: transaction id
+        :return: the number of transaction confirmations, -1 if tx_id is invalid, 0 if the transaction is pending.
+        :rtype: int
+        """
+        tx = self.web3.eth.getTransaction(tx_id)
+        if not tx:  # not found, probably invalid
+            return -1
+        if not tx.get('blockNumber'):  # pending
+            return 0
+        tx_block_number = int(tx['blockNumber'])
+        cur_block_number = int(self.web3.eth.blockNumber)
+        return cur_block_number - tx_block_number + 1
+
     def monitor_ether_transactions(self, callback_fn, from_address=None, to_address=None):
         """Monitors Ether transactions and calls back on transactions matching the supplied filter.
 

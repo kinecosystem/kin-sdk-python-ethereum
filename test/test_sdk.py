@@ -222,6 +222,22 @@ def test_get_transaction_status(test_sdk, testnet):
         assert tx_status == kin.TransactionStatus.FAIL
 
 
+def test_get_num_transaction_confirmations(test_sdk, testnet):
+    num_confirmations = test_sdk.get_num_transaction_confirmations('0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    assert num_confirmations == -1
+
+    # some tests for Ropsten only
+    if testnet.type == 'ropsten':
+        tx_id = '0x86d51e5547b714232d39e86e86295c20e0241f38d9b828c080cc1ec561f34daf'
+        tx = test_sdk.web3.eth.getTransaction(tx_id)
+        assert tx and tx.get('blockNumber')
+        tx_block_number = int(tx['blockNumber'])
+        cur_block_number = int(test_sdk.web3.eth.blockNumber)
+        calc_confirmations = cur_block_number - tx_block_number + 1
+        tx_confirmations = test_sdk.get_num_transaction_confirmations(tx_id)
+        assert tx_confirmations == calc_confirmations or tx_confirmations == calc_confirmations + 1
+
+
 def test_monitor_ether_transactions(test_sdk, testnet):
     tx_statuses = {}
 
@@ -248,12 +264,14 @@ def test_monitor_ether_transactions(test_sdk, testnet):
             break
         sleep(0.001)
     assert tx_statuses[tx_id] >= kin.TransactionStatus.PENDING
+    assert test_sdk.get_num_transaction_confirmations(tx_id) >= 0
 
     for wait in range(0, 90):
         if tx_statuses[tx_id] > kin.TransactionStatus.PENDING:
             break
         sleep(1)
     assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
+    assert test_sdk.get_num_transaction_confirmations(tx_id) == 1
 
 
 def test_monitor_token_transactions(test_sdk, testnet):
