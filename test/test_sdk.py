@@ -2,7 +2,9 @@
 from decimal import Decimal
 import json
 import kin
+import os
 import pytest
+import sys
 from time import sleep
 
 # Ropsten constants
@@ -19,6 +21,9 @@ TESTRPC_PRIVATE_KEY = '0x11c98b8fa69354b26b5db98148a5bc4ef2ebae8187f651b82409f6c
 TESTRPC_CONTRACT_FILE = './test/truffle_env/token_contract_address.txt'  # TODO: pass it as environment variable
 TESTRPC_ABI_FILE = './test/truffle_env/build/contracts/TestToken.json'
 TESTRPC_PROVIDER_ENDPOINT = 'http://localhost:8545'
+
+TEST_KEYFILE = './test/test-keyfile.json'
+TEST_PASSWORD = 'password'
 
 
 @pytest.fixture(scope='session')
@@ -72,13 +77,33 @@ def test_create_fail_invalid_contract_address():
 
 def test_create_fail_empty_abi():
     with pytest.raises(kin.SdkConfigurationError, message='token contract abi not provided'):
-        kin.TokenSDK(contract_abi='')
+        kin.TokenSDK(contract_abi=None)
+    with pytest.raises(kin.SdkConfigurationError, message='token contract abi not provided'):
+        kin.TokenSDK(contract_abi={})
 
 
 def test_create_fail_bad_private_key():
     with pytest.raises(kin.SdkConfigurationError, message='cannot load private key: Unexpected private key format.  '
                                                           'Must be length 32 byte string'):
         kin.TokenSDK(private_key='bad')
+
+
+@pytest.mark.skipif(sys.version_info.major >= 3, reason="not yet supported in python 3")
+def test_create_fail_keyfile():
+    with pytest.raises(IOError, message="No such file or directory: 'missing.json'"):
+        kin.TokenSDK(keyfile='missing.json')
+    with open(TEST_KEYFILE, 'w+') as f:
+        f.write('not json')
+    with pytest.raises(kin.SdkConfigurationError, message="invalid json in keystore file"):
+        kin.TokenSDK(keyfile=TEST_KEYFILE)
+    with open(TEST_KEYFILE, 'w+') as f:
+        f.write('{"key::"value"')
+    with pytest.raises(kin.SdkConfigurationError, message="invalid keystore file"):
+        kin.TokenSDK(keyfile=TEST_KEYFILE)
+    kin.create_keyfile(ROPSTEN_PRIVATE_KEY, TEST_PASSWORD, TEST_KEYFILE)
+    with pytest.raises(kin.SdkConfigurationError, message='keyfile decode error: MAC mismatch. Password incorrect?'):
+        kin.TokenSDK(keyfile=TEST_KEYFILE, password='wrong')
+    os.remove(TEST_KEYFILE)
 
 
 def test_sdk_not_configured():
@@ -104,7 +129,7 @@ def test_create_default():
 
 
 def test_create_with_private_key(testnet):
-    sdk = kin.TokenSDK(provider_endpoint_uri=testnet.provider_endpoint_uri, private_key=testnet.private_key)
+    sdk = kin.TokenSDK(private_key=testnet.private_key)
     assert sdk
     assert sdk.web3
     assert sdk.token_contract
@@ -112,10 +137,22 @@ def test_create_with_private_key(testnet):
     assert sdk.get_address().lower() == testnet.address.lower()
 
 
+@pytest.mark.skipif(sys.version_info.major >= 3, reason="not yet supported in python 3")
+def test_create_with_keyfile():
+    kin.create_keyfile(ROPSTEN_PRIVATE_KEY, TEST_PASSWORD, TEST_KEYFILE)
+    sdk = kin.TokenSDK(keyfile=TEST_KEYFILE, password=TEST_PASSWORD)
+    assert sdk
+    assert sdk.web3
+    assert sdk.token_contract
+    assert sdk.private_key == ROPSTEN_PRIVATE_KEY
+    assert sdk.get_address() == ROPSTEN_ADDRESS
+    os.remove(TEST_KEYFILE)
+
+
 @pytest.fixture
 def test_sdk(testnet):
     sdk = kin.TokenSDK(provider_endpoint_uri=testnet.provider_endpoint_uri, private_key=testnet.private_key,
-                        contract_address=testnet.contract_address, contract_abi=testnet.contract_abi)
+                       contract_address=testnet.contract_address, contract_abi=testnet.contract_abi)
     assert sdk
     assert sdk.web3
     assert sdk.token_contract
