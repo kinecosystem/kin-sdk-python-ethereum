@@ -11,16 +11,12 @@ init:
 	cd ./test/truffle_env && npm install
 .PHONY: init
 
-test: truffle
-	python -m pytest --cov=kin -s -x test
-.PHONY: test
-
-test: truffle
-	python -m pytest --cov=kin -s -x test
-.PHONY: test
-
 test-ropsten:
 	python -m pytest --ropsten --cov=kin -s -x test
+.PHONY: test
+
+test: truffle
+	python -m pytest --cov=kin -s -x test
 .PHONY: test
 
 truffle: testrpc truffle-clean

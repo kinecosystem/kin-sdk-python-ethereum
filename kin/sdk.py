@@ -18,6 +18,7 @@ from eth_utils import (
     encode_hex,
     function_signature_to_4byte_selector
 )
+from ethereum.tools import keys as ekeys
 from ethereum.transactions import Transaction
 
 import rlp
@@ -67,7 +68,8 @@ class TransactionStatus:
 
 class TokenSDK(object):
 
-    def __init__(self, private_key='', provider='', provider_endpoint_uri='https://mainnet.infura.io',
+    def __init__(self, keyfile='', password='', private_key='',
+                 provider='', provider_endpoint_uri='https://mainnet.infura.io',
                  contract_address=KIN_CONTRACT_ADDRESS, contract_abi=KIN_ABI):
         """Create a new instance of the KIN SDK.
 
@@ -127,20 +129,31 @@ class TokenSDK(object):
         self.private_key = None
         self.address = None
 
-        if private_key:
+        if keyfile:
+            with open(keyfile, 'r') as f:
+                try:
+                    keystore = json.load(f)
+                except Exception as e:
+                    raise SdkConfigurationError('invalid json in keystore file')
+            if not ekeys.check_keystore_json(keystore):
+                raise SdkConfigurationError('invalid keystore file')
             try:
-                private_key_bytes = hexstr_if_str(to_bytes, private_key)
+                self.private_key = ekeys.decode_keystore_json(keystore, password)
+            except ValueError as e:
+                raise SdkConfigurationError('keyfile decode error: ' + str(e))
+        elif private_key:
+            self.private_key = private_key
+
+        if self.private_key:
+            try:
+                private_key_bytes = hexstr_if_str(to_bytes, self.private_key)
                 pk = keys.PrivateKey(private_key_bytes)
             except ValidationError as e:
                 raise SdkConfigurationError('cannot load private key: ' + str(e))
-            self.private_key = private_key
             self.address = self.web3.eth.defaultAccount = pk.public_key.to_checksum_address()
 
-        # ethereum transactions monitoring
+        # monitoring filters
         self._pending_tx_filter = None
-        self._pending_tx_monitor = {
-            'all': {}
-        }
         self._new_block_filter = None
 
     def get_address(self):
@@ -281,7 +294,7 @@ class TokenSDK(object):
         filter_args = self._get_filter_args(from_address, to_address)
 
         def check_and_callback(tx, status):
-            if tx.get('input') and not (tx['input'] == '0x' or tx['input'] == '0x0'):  # this is a contract transaction, skip it
+            if tx.get('input') and not (tx['input'] == '0x' or tx['input'] == '0x0'):  # contract transaction, skip it
                 return
             if ('from' in filter_args and tx['from'].lower() == filter_args['from'].lower() and
                     ('to' not in filter_args or tx['to'].lower() == filter_args['to'].lower()) or
@@ -501,4 +514,17 @@ class TokenSDK(object):
         return filter_args
 
 
+def create_keyfile(private_key, password, filename):
+    """Creates a wallet keyfile.
+
+    :param str private_key: private key
+    :param password: keyfile password
+    :param filename: keyfile path
+    """
+    import sys
+    if sys.version_info.major >= 3:
+        raise NotImplementedError('keyfile is only supported in python2')
+    keyfile_json = ekeys.make_keystore_json(private_key.encode(), password, kdf='scrypt')
+    with open(filename, 'w+') as f:
+        json.dump(keyfile_json, f)
 

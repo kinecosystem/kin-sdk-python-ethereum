@@ -2,7 +2,7 @@
 # Kin Python SDK 
 [![Build Status](https://travis-ci.com/kinfoundation/kin-sdk-python.svg?token=f7PF9BYUzqkMQU5JpUvN)](https://travis-ci.com/kinfoundation/kin-sdk-python)
 
-## Disclosure
+## Disclaimer
 
 The SDK is not yet ready for third-party use by digital services in the Kin ecosystem.
 It is still tested internally by Kik as part of [initial product launch, version 2](https://medium.com/kinfoundation/context-around-iplv2-4b4ec3734417).
@@ -44,6 +44,11 @@ kin_sdk = kin.TokenSDK()
 
 # Init SDK with my private key and default parameters
 kin_sdk = kin.TokenSDK(private_key='a60baaa34ed125af0570a3df7d4cd3e80dd5dc5070680573f8de0ecfc1957575')
+
+# Create a keyfile from my private key
+kin.create_keyfile('a60baaa34ed125af0570a3df7d4cd3e80dd5dc5070680573f8de0ecfc1957575', 'my password', 'keyfile.json')
+# Init SDK with my keyfile and default parameters
+kin_sdk = kin.TokenSDK(keyfile='keyfile.jsoj', password='my password')
 
 # Init SDK with custom parameters
 kin_sdk = kin.TokenSDK(provider_endpoint_uri='JSON-RPC endpoint URI', private_key='my private key',
