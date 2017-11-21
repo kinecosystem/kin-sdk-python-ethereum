@@ -98,6 +98,13 @@ tx_status = kin_sdk.get_transaction_status(tx_id)
 #   kin.TransactionStatus.SUCCESS
 #   kin.TransactionStatus.FAIL
 
+# Get the number of transaction confirmations
+num_confirms = kin_sdk.get_num_transaction_confirmations(tx_id)
+# returns one of:
+#   -1 if transaction is not found
+#    0 if transaction is pending
+#   >0 if transaction is confirmed
+
 # Setup monitoring callback
 tx_statuses = {}
 def mycallback(tx_id, status, from_address, to_address, amount):
