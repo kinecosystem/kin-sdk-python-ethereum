@@ -95,15 +95,21 @@ tx_id = kin_sdk.send_tokens('address', 10)
 ```python
 # Get transaction status
 tx_status = kin_sdk.get_transaction_status(tx_id)
-# returns one of:
+# Returns one of:
 #   kin.TransactionStatus.UNKNOWN
 #   kin.TransactionStatus.PENDING
 #   kin.TransactionStatus.SUCCESS
 #   kin.TransactionStatus.FAIL
 
-# Get the number of transaction confirmations
-num_confirms = kin_sdk.get_num_transaction_confirmations(tx_id)
-# returns one of:
+# Get transaction details
+tx_data = kin_sdk.get_transaction_data(tx_id)
+# Returns a kin.TransactionData object containing the following fields:
+# from_address - the address this transaction was sent from
+# to_address   - the address this transaction was sent to. For token transactions, this is the decoded recipient address.
+# ether_amount - the amount of transferred Ether. 0 for token transactions.
+# token_amount - the amount of transferred tokens. 0 for Ether transactions.
+# status       - the transaction status, see above.
+# num_confirmations - the number of confirmations for this transaction:
 #   -1 if transaction is not found
 #    0 if transaction is pending
 #   >0 if transaction is confirmed
