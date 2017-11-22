@@ -69,7 +69,7 @@ class TransactionStatus:
 class TokenSDK(object):
 
     def __init__(self, keyfile='', password='', private_key='',
-                 provider='', provider_endpoint_uri='https://mainnet.infura.io',
+                 provider='', provider_endpoint_uri='http://159.89.240.147:8545',
                  contract_address=KIN_CONTRACT_ADDRESS, contract_abi=KIN_ABI):
         """Create a new instance of the KIN SDK.
 
@@ -83,8 +83,13 @@ class TokenSDK(object):
             - get_transaction_status
             - monitor_ether_transactions
 
-        :param str private_key: a private key to initialize the wallet with. If not provided,
-            the wallet will not be initialized and methods needing the wallet will raise exception.
+        :param str private_key: a private key to initialize the wallet with. If either private key or keyfile
+            are not provided, the wallet will not be initialized and methods needing the wallet will raise exception.
+
+        :param str keyfile: the path to the keyfile to initialize to wallet with. Usually you will also need to supply
+        a password for this keyfile.
+
+        :param str password: a password for the keyfile.
 
         :param provider: JSON-RPC provider to work with. If not provided, a default `web3:providers:HTTPProvider`
             is used, inited with provider_endpoint_uri.

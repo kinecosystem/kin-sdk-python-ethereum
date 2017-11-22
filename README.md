@@ -31,24 +31,27 @@ In order to overcome this limitation, do the following:
 ## Usage
 
 ### Initialization
+
 ```python
 import kin
 
 # Init SDK with default parameters
 # default parameters:
-#   provider_endpoint_uri is https://mainnet.infura.io
-#   contract_address is KIN production contract 0x818fc6c2ec5986bc6e2cbf00939d90556ab12ce5
-#   contract_abi is KIN production contract ABI
-# Note: this is useful for generic blockchain access, when public key is not needed.
+#   `provider` is `web3.providers.HTTPProvider`
+#   `provider_endpoint_uri` is `http://159.89.240.147:8545`
+#   `contract_address` is KIN production contract `0x818fc6c2ec5986bc6e2cbf00939d90556ab12ce5`
+#   `contract_abi` is KIN production contract ABI
+# Note: this is useful for anonymous blockchain access, when your private key is not needed.
 kin_sdk = kin.TokenSDK()
 
 # Init SDK with my private key and default parameters
 kin_sdk = kin.TokenSDK(private_key='a60baaa34ed125af0570a3df7d4cd3e80dd5dc5070680573f8de0ecfc1957575')
 
-# Create a keyfile from my private key
-kin.create_keyfile('a60baaa34ed125af0570a3df7d4cd3e80dd5dc5070680573f8de0ecfc1957575', 'my password', 'keyfile.json')
 # Init SDK with my keyfile and default parameters
-kin_sdk = kin.TokenSDK(keyfile='keyfile.jsoj', password='my password')
+# First, create a keyfile from my private key
+kin.create_keyfile('a60baaa34ed125af0570a3df7d4cd3e80dd5dc5070680573f8de0ecfc1957575', 'my password', 'keyfile.json')
+# Init SDK with this keyfile
+kin_sdk = kin.TokenSDK(keyfile='keyfile.json', password='my password')
 
 # Init SDK with custom parameters
 kin_sdk = kin.TokenSDK(provider_endpoint_uri='JSON-RPC endpoint URI', private_key='my private key',
@@ -131,34 +134,11 @@ for wait in range(0, 90):
 assert tx_statuses[tx_id] == kin.TransactionStatus.SUCCESS
 ```
 
-## Development
-
-```bash
-# setup virtualenv
-$ mkvirtualenv kin-python-sdk
-$ workon kin-python-sdk
-
-# setup pip and npm dependencies
-$ make init
-
-# work on code ...
-
-# test with local testrpc
-$ make test
-
-# test with Ropsten
-$ make test-ropsten
-```
-
-The `make test` flow is as follows:
-- run `testrpc` with predefined accounts pre-filled with Ether.
-- run `truffle deploy --reset` to compile and deploy your contract. This will aso add some tokens to the first account.
-- run `python -m pytest -s -x test` to test your code
-
 ## Support & Discussion
 
 ## License
 Code released under [GPLv2 license](LICENSE)
 
-## Contributions 
- Pull requests and new issues are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details. 
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for SDK contributing guidelines. 
+
