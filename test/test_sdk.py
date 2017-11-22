@@ -16,7 +16,7 @@ ROPSTEN_PROVIDER_ENDPOINT = 'http://159.89.240.122:8545'  # load balanced parity
 
 # TestRpc configuration
 # the following address is set up in testrpc and is prefilled with eth and tokens.
-TESTRPC_ADDRESS = '0x8b455ab06c6f7ffad9fdba11776e2115f1de14bd'
+TESTRPC_ADDRESS = '0x8B455Ab06C6F7ffaD9fDbA11776E2115f1DE14BD'
 TESTRPC_PRIVATE_KEY = '0x11c98b8fa69354b26b5db98148a5bc4ef2ebae8187f651b82409f6cefc9bb0b8'
 TESTRPC_CONTRACT_FILE = './test/truffle_env/token_contract_address.txt'  # TODO: pass it as environment variable
 TESTRPC_ABI_FILE = './test/truffle_env/build/contracts/TestToken.json'
@@ -141,7 +141,7 @@ def test_create_with_private_key(testnet):
     assert sdk.web3
     assert sdk.token_contract
     assert sdk.private_key == testnet.private_key
-    assert sdk.get_address().lower() == testnet.address.lower()
+    assert sdk.get_address() == testnet.address
 
 
 @pytest.mark.skipif(sys.version_info.major >= 3, reason="not yet supported in python 3")
@@ -164,12 +164,12 @@ def test_sdk(testnet):
     assert sdk.web3
     assert sdk.token_contract
     assert sdk.private_key == testnet.private_key
-    assert sdk.get_address().lower() == testnet.address.lower()
+    assert sdk.get_address() == testnet.address
     return sdk
 
 
 def test_get_address(test_sdk, testnet):
-    assert test_sdk.get_address().lower() == testnet.address.lower()
+    assert test_sdk.get_address() == testnet.address
 
 
 def test_get_ether_balance(test_sdk):
