@@ -75,11 +75,18 @@ def test_create_fail_invalid_contract_address():
         kin.TokenSDK(contract_address='0x4c6527c2BEB032D46cfe0648072cAb641cA0aA81')  # invalid checksum
 
 
-def test_create_fail_empty_abi():
+def test_create_fail_invalid_abi():
     with pytest.raises(kin.SdkConfigurationError, message='token contract abi not provided'):
         kin.TokenSDK(contract_abi=None)
     with pytest.raises(kin.SdkConfigurationError, message='token contract abi not provided'):
         kin.TokenSDK(contract_abi={})
+    with pytest.raises(kin.SdkConfigurationError, message='token contract abi not provided'):
+        kin.TokenSDK(contract_abi=[])
+    with pytest.raises(kin.SdkConfigurationError, message="invalid token contract abi: 'abi' is not a list"):
+        kin.TokenSDK(contract_abi='bad')
+    with pytest.raises(kin.SdkConfigurationError, message="invalid token contract abi: The elements of 'abi' "
+                                                          "are not all dictionaries"):
+        kin.TokenSDK(contract_abi=['bad'])
 
 
 def test_create_fail_bad_private_key():

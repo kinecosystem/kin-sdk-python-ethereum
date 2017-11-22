@@ -30,7 +30,10 @@ from web3.utils.encoding import (
     to_hex,
 )
 
-from web3.utils.validation import validate_address
+from web3.utils.validation import (
+    validate_abi,
+    validate_address,
+)
 
 from .exceptions import (
     SdkConfigurationError,
@@ -122,6 +125,11 @@ class TokenSDK(object):
 
         if not contract_abi:
             raise SdkConfigurationError('token contract abi not provided')
+
+        try:
+            validate_abi(contract_abi)
+        except Exception as e:
+            raise SdkConfigurationError('invalid token contract abi: ' + str(e))
 
         if provider:
             self.web3 = Web3(provider)
