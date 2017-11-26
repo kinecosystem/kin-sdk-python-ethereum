@@ -19,7 +19,6 @@ from eth_utils import (
     encode_hex,
     function_signature_to_4byte_selector
 )
-from ethereum.tools import keys as ekeys
 from ethereum.transactions import Transaction
 
 import rlp
@@ -159,6 +158,7 @@ class TokenSDK(object):
                     keystore = json.load(f)
                 except Exception as e:
                     raise SdkConfigurationError('invalid json in keystore file')
+            from ethereum.tools import keys as ekeys
             if not ekeys.check_keystore_json(keystore):
                 raise SdkConfigurationError('invalid keystore file')
             try:
@@ -575,6 +575,7 @@ def create_keyfile(private_key, password, filename):
     import sys
     if sys.version_info.major >= 3:
         raise NotImplementedError('keyfile is only supported in python2')
+    from ethereum.tools import keys as ekeys
     keyfile_json = ekeys.make_keystore_json(private_key.encode(), password, kdf='scrypt')
     with open(filename, 'w+') as f:
         json.dump(keyfile_json, f)
