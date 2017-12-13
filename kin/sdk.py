@@ -2,13 +2,6 @@
 
 # Copyright (C) 2017 Kin Foundation
 
-"""
-The :class:`~kin.TokenSDK` class is the primary interface to the KIN Python SDK.
-It maintains a context for a connection with an Ethereum JSON-RPC node and hides
-all the specifics of dealing with Ethereum JSON-RPC API.
-"""
-
-from collections import namedtuple
 import json
 from time import sleep
 
@@ -80,6 +73,11 @@ class TransactionData(object):
 
 
 class TokenSDK(object):
+    """
+    The :class:`~kin.TokenSDK` class is the primary interface to the KIN Python SDK.
+    It maintains a connection context with an Ethereum JSON-RPC node and hides
+    all the specifics of dealing with Ethereum JSON-RPC API.
+    """
 
     def __init__(self, keyfile='', password='', private_key='',
                  provider='', provider_endpoint_uri='http://159.89.240.147:8545',
