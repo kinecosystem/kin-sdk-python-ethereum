@@ -1,6 +1,6 @@
 
 # Kin Python SDK 
-[![Build Status](https://travis-ci.com/kinfoundation/kin-sdk-python.svg?token=f7PF9BYUzqkMQU5JpUvN)](https://travis-ci.com/kinfoundation/kin-sdk-python)
+[![Build Status](https://travis-ci.org/kinfoundation/kin-sdk-python.svg)](https://travis-ci.org/kinfoundation/kin-sdk-python) [![Coverage Status](https://codecov.io/gh/kinfoundation/kin-sdk-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinfoundation/kin-sdk-python)
 
 ## Disclaimer
 

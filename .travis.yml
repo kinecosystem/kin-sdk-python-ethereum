@@ -20,8 +20,8 @@ install:
 script:
   - make test
 
-#after_success:
-#  - codecov --token=$CODECOV_TOKEN
+after_success:
+  - codecov --token=915ec5cf-c922-43df-a4f7-2e35a7674826
 
 notifications:
   email: false
