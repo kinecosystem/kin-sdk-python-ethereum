@@ -2,10 +2,9 @@
 # Kin Python SDK 
 [![Build Status](https://travis-ci.org/kinfoundation/kin-sdk-python.svg)](https://travis-ci.org/kinfoundation/kin-sdk-python) [![Coverage Status](https://codecov.io/gh/kinfoundation/kin-sdk-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinfoundation/kin-sdk-python)
 
-## Disclaimer
+## End-of-Life
 
-The SDK is not yet ready for third-party use by digital services in the Kin ecosystem.
-It is still tested internally by Kik as part of [initial product launch, version 2](https://medium.com/kinfoundation/context-around-iplv2-4b4ec3734417).
+This SDK is no longer supported for new users. Please see [kin-core-python](https://github.com/kinfoundation/kin-core-python) for the current SDK.
 
 ## Requirements.
 
